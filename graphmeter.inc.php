@@ -3,7 +3,7 @@
 // graphmeter.inc.php
 // svggraphシリーズ：横バーグラフ的なメーター表示プラグイン。
 //
-// 2021/10/12 H.Tomose
+// ver0.05 2023/10/19 H.Tomose
 
 function plugin_graphmeter_convert()
 {
@@ -17,13 +17,20 @@ function plugin_graphmeter_draw($argg, $lib)
 	$gr_h = 30;  //高さデフォルト
 	$gr_txt = "";
 
-	$gr_offset = 70; // オフセット位置
+	$gr_offset = 70; // グラフ開始位置のオフセット
 	$gr_max = 100; // ゲージ最大値
+	$gr_min = 0; // ゲージ最小値
+	$gr_textoffset=0; // テキストのオフセット位置
 
 	$data = 0; //実データ
 	$color = array(); // 色
 	$precol='lightgrey';
 	$color[0]="lightgrey";
+
+	$mcolor= $color[0];	// メーター色
+	$sccolor = 'blue';	// メーターゲージの色
+	$txcolor= 'black';	// テキスト色
+
 
 	// 引数処理
 	foreach( $argg as $key => $arg){
@@ -42,24 +49,33 @@ function plugin_graphmeter_draw($argg, $lib)
 				case 'offset': //オフセット
 					$gr_offset = ctype_digit($argss[1])? $argss[1]: $gr_offset;
 					break;
+
+				case 'text_offset': //テキストオフセット
+					$gr_textoffset = ctype_digit($argss[1])? $argss[1]: $gr_textoffset;
+					break;
+
 				case 'data': //データ値
 					$data = ctype_digit($argss[1])? $argss[1]: $data;
 					break;
-				case 'max': //データ値
+				case 'max': //データ最大値
 					$gr_max = ctype_digit($argss[1])? $argss[1]: $gr_max;
 					break;
 
 				case 'text':
-					// メータ前の文字列
-					$gr_txt=$argss[1];
+					// メータ前の文字列。XSS対策の変換実施。
+					$gr_txt=htmlsc($argss[1]);
 					break;
 
 				case 'color':
-					if(! $argss[1]=="")	{
-						//array_push($data,$argss[1]);
-						$color[0] = $argss[1];
-					}
-					////////tomoseDBG("push: key[".$datas[0]."][".$datas[1]."]");
+					$color[0] = $lib->correctColor($argss[1]);
+					break;
+
+				case 'text_color':
+					$txcolor = $lib->correctColor($argss[1]);
+					break;
+
+				case 'gauge_color':
+					$sccolor = $lib->correctColor($argss[1]);
 					break;
 
 				default:
@@ -86,11 +102,15 @@ function plugin_graphmeter_draw($argg, $lib)
 	$gr_offset +=10;
 //	$body.= '<text x="50" y="25" fill="'.$ccolor.'">width'.$gr_w.'_data:'.$data.'_max'.$gr_max.'</text>'."\n";
 
+	$lncolor="stroke:".$sccolor.";stroke-width:3";
+
 $body.=<<<EOD
 <rect x="$gr_offset" y="0" width="$gr_w" height="$gr_h" style="fill:white;" />
 <rect x="$gr_offset" y="$dataheight" width="$datawidth" height="$gr_h" style="fill:$color[0];" />
-<line x1="$gr_offset" y1="$gr_h" x2="$tmpx" y2="$gr_h" style="stroke:black;stroke-width:3" />
+<line x1="$gr_offset" y1="$gr_h" x2="$tmpx" y2="$gr_h" style="$lncolor" />
 EOD;
+
+	$lncolor="stroke:".$sccolor.";stroke-width:1";
 
 	for ($i = 0; $i <= 10; $i++) {
 		$tmpx = $gr_offset+$areawidth * $i / 10;
@@ -99,16 +119,17 @@ EOD;
 		if($i==5) $tmph =$gr_h*5/10;
 
 $body.=<<<EOD
-<line x1="$tmpx" y1="$tmph" x2="$tmpx" y2="$gr_h" style="stroke:black;stroke-width:1" />
+<line x1="$tmpx" y1="$tmph" x2="$tmpx" y2="$gr_h" style="$lncolor" />
 EOD;
 
-	$body.= '<text x="'.($tmpx+1).'" y="'.($gr_h-2).'" fill="'.$ccolor.'" font-size=10>'.($i*10).'</text>'."\n";
+	$body.= '<text x="'.($tmpx+1).'" y="'.($gr_h-2).'" fill="'.$sccolor.'" font-size=10>'.($gr_max*($i*10)/100).'</text>'."\n";
 
 
 	}
 	// オブジェクト。
+	$gr_ytext=($gr_h+10)/2;
 
-	$body.= '<text x="0" y="15" fill="'.$ccolor.'">'.$gr_txt.'</text>'."\n";
+	$body.= '<text x="'.$gr_textoffset.'" y="'.$gr_ytext.'" fill="'.$txcolor.'">'.$gr_txt.'</text>'."\n";
 
 
 

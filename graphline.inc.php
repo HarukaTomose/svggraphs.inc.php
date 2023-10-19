@@ -1,5 +1,5 @@
 <?php
-// $Id: graphline.inc.php,v 0.02 2017/03/14 Haruka Tomose
+// $Id: graphline.inc.php,v 0.05 2023/10/19 Haruka Tomose
 
 function plugin_graphline_convert()
 {
@@ -30,7 +30,7 @@ function plugin_graphline_draw($argg, $lib)
 	$scaley = "";
 	$sclisty = array();
 
-
+	$legend="on";
 	$legendx =0;	$legendy=0;
 	$legendw =0;	$legendh=0;
 	
@@ -92,6 +92,10 @@ function plugin_graphline_draw($argg, $lib)
 					break;
 				case 'title':
 					$gtitle=htmlsc($argss[1]);
+					break;
+
+				case 'legend':
+					$legend=htmlsc($argss[1]);
 					break;
 
 				case 'legendx': //タイトル座標ｘ
@@ -321,9 +325,11 @@ $html .="\n";
 	//凡例
 	$legendh= count($data)*14;
 	$legendw= 50+$legendw*7;
+
+	if(!$legend==""){
+
 	$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
 $html .= <<<EOD
-	
 	<rect width="$legendw" height="$legendh" style="fill:white;stroke-width:1;stroke:black" />
 EOD;
 	$tmp=12;
@@ -336,10 +342,12 @@ $html .=<<<EOD
 <line x1="10" y1="$tmp" x2="30" y2="$tmp" style="stroke:$ccolor;stroke-width:1" />
 
 EOD;
-		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.$key.'</text>'."\n";
+		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
 		$tmp+=12;
 	}
 	$html .="</g>";
+	}	
+
 
 $html .='</svg>';
 

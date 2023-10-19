@@ -1,5 +1,5 @@
 <?php
-// $Id: svggraphs.inc.php,v 0.02 2017/03/14 Haruka Tomose
+// $Id: svggraphs.inc.php,v 0.04 2023/10/13 Haruka Tomose
 // svgグラフプラグイン。
 // このプラグインは複数プラグインによる階層的な構造にする。
 // svggraph はその大元プラグイン。
@@ -10,7 +10,8 @@ function plugin_svggraphs_convert()
 	global $vars;
 	$html = "#svggraps : bad parametor.";
 	$lib = new Plugin_svggraphs_lib();
-	
+	$lib->initLib();
+
 	$args=func_get_args();
 
 	$argg= $lib->plugin_graphline_parse_arg($args);
@@ -61,6 +62,34 @@ function plugin_svggraphs_convert()
 class Plugin_svggraphs_lib
 {
 
+	static $testprop="dummy";
+	// 色を自動選択するための色指定配列。
+	static $clist = array(
+			'0' => 'black',
+			'1' => 'blue',
+			'2' => 'red',
+			'3' => 'green',
+			'4' => 'purple',
+			'5' => 'skyblue',
+			'6' => 'yellow',
+			'7' => 'brown',
+			'8' => 'darkblue',
+			'10' => 'lightgrey',
+			'11' => 'lightsteelblue',
+			'12' => 'salmon',
+			'13' => 'lightgreen',
+			'14' => 'violet',
+			'15' => 'lightcyan',
+			'16' => 'lightyellow',
+			'17' => 'crimson', 
+			
+		);
+
+	function initLib()
+	{
+		//$testprop="test";
+	}
+
 	function plugin_graphline_parse_arg($ppp)
 	{
 		// 引数整理関数
@@ -92,7 +121,7 @@ class Plugin_svggraphs_lib
 				switch ($prma[0])
 				{
 					case "file":
-						//tomoseDBG("File target:".DATA_DIR.encode($prma[1]).".txt");
+
 						// ファイル読み込み指定。
 						$fd= file(DATA_DIR.encode($prma[1]).".txt");
 						foreach($fd as $line ){
@@ -121,34 +150,49 @@ class Plugin_svggraphs_lib
 		return $datas;
 	}
 
-	function getnextcolor( $color )
+	function getnextcolor( $color ,$defaultcolor="blue")
 	{
-		$clist = array(
-			'0' => 'black',
-			'1' => 'blue',
-			'2' => 'red',
-			'3' => 'green',
-			'4' => 'purple',
-			'5' => 'skyblue',
-			'6' => 'yellow',
-			'10' => 'lightgrey',
-			'11' => 'lightsteelblue',
-			'12' => 'salmon',
-			'13' => 'lightgreen',
-			'14' => 'violet',
-			'15' => 'lightcyan',
-			'16' => 'lightyellow',
-			
-		);
+		// 色を自動的に選ぶためのメソッド。現在の色をもとに「次」を選ぶ。
 
-		$rslt = array_search( $color, $clist);
+		$rslt = array_search( $color, Plugin_svggraphs_lib::$clist);
 		if(! $rslt) {
 			$rslt = 1;
 		}else{
 			$rslt= ( count($list)<=$rslt+1)? $rslt+1: 1;
 		}
-		return $clist[$rslt];
+		return Plugin_svggraphs_lib::$clist[$rslt];
 	}
+
+	function correctColor( $color ,$defaultcolor="black"){
+		// 色指定に使われた文字列が妥当であるかを判定処理する。
+		// いわゆるインジェクション攻撃系のために、
+		// 「名前指定」または「#xxxxxx」形式でなければデフォルト色を戻す。
+
+		if(preg_match('/(^#[0-9A-Fa-f]{6})/', $color, $m)){
+			//いわゆる16進指定。形式さえ合っていればOK。
+			return $m[1];
+
+			}
+		
+		if(preg_match('/(^[A-Za-z]+$)/', $color, $m)){
+			//色名称？リストすべてを判定する手段がないので、妥協する。
+			return $m[1];
+		}
+
+		//16進指定でなくかつ色名で使えない文字を指定しているのでエラー。
+		return $defaultcolor;
+/*
+		$rslt = array_search( $color, Plugin_svggraphs_lib::$clist);
+		if(! $rslt) {
+			return $defaultcolor;
+		}else{
+			return Plugin_svggraphs_lib::$clist[$rslt];
+		}
+		return true;
+*/
+
+	}
+
 
 }
 
