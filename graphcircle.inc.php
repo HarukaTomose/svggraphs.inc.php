@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphcircle.inc.php,v 0.01 2017/03/18
+// $Id: graphcircle.inc.php,v 0.05 2023/10/19
 
 function plugin_graphcircle_convert()
 {
@@ -14,15 +14,15 @@ function plugin_graphcircle_draw($argg, $lib)
 
 	// 描画領域 初期値。
 	$cw=100;	$ch=100;		// キャンバスサイズデフォルト
-	$offx = 20;	$offy =10;	// キャンバス上のグラフ開始座標。
+	$offx = 0;	$offy =0;	// キャンバス上のグラフ開始座標。
 
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
 
 	// グラフ座標軸関連	
-	$cx= ($cw-$offx)/2;
-	$cy= ($ch-$offy)/2;
+	$cx= ($cw+$offx)/2;
+	$cy= ($ch+$offy)/2;
 
 	$r = ($cw>$ch)? $ch/3 : $cw/3;
 
@@ -30,8 +30,11 @@ function plugin_graphcircle_draw($argg, $lib)
 	$data = array(); //実データ
 	$color = array(); // 色
 
-	$noshow_target = "";
+	$noshow_target = array();; //非表示にする項目名称
 	$noshow = FALSE;
+
+	// 中央に円を入れる場合の半径
+	$ccircle =0;
 
 	// 引数処理
 	foreach( $argg as $key => $arg){
@@ -65,11 +68,17 @@ function plugin_graphcircle_draw($argg, $lib)
 					$gtitle=htmlsc($argss[1]);
 					break;
 
+				case 'center': //中央に円を描く場合の円半径
+					$ccircle = ctype_digit($argss[1])? $argss[1]: $ccircle;
+					break;
+
 				case 'data':
 					// dataは "name:1,2,3,..." という構造。
 					$datas=$lib->trimexplode(':',$argss[1]);
 					if(! $datas[1]=="")	{
 						$data[htmlsc($datas[0])] = $datas[1];
+
+
 					}
 					break;
 				case 'color':
@@ -83,6 +92,8 @@ function plugin_graphcircle_draw($argg, $lib)
 
 				case 'noshow':
 					$noshow_target = htmlsc($argss[1]);
+					//array_push($noshow_target,htmlsc($argss[1]));
+
 					break;
 
 				default:
@@ -107,8 +118,8 @@ function plugin_graphcircle_draw($argg, $lib)
 	if(count($data)<=0) return "#graphcircle: No Data";
 
 	// グラフ座標 再計算
-	$cx= ($cw-$offx)/2;
-	$cy= ($ch-$offy)/2;
+	$cx= ($cw+$offx)/2;
+	$cy= ($ch+$offy)/2;
 
 	$r = ($cw>$ch)? $ch/3 : $cw/3;
 
@@ -176,8 +187,20 @@ EOD;
 
 	}
 
+	//中央円
+	if( $ccircle>0){
+		$html .='<circle cx="'.$cx.'" cy="'.$cy.'" r="'.$ccircle.'" stroke="gray" stroke-width="1" fill="white"/>';
+
+	}
+
+	// タイトル
+	if(! $gtitle==""){
+		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>';
+	}
+
 	$ctotal=0;
 
+	//各値のデータ表示
 	foreach($dtable as $key => $value){
 		if( $noshow_target==$key ) $noshow=TRUE;
 		if( $noshow ) continue;
@@ -185,10 +208,10 @@ EOD;
 		$tangle= 360*($ctotal+$value/2)/$tvalue;
 		$txx= intval($cx + $r/2 * sin($tangle / 180 * pi()) -10);
 		$txy= intval($cy - $r/2 * cos($tangle / 180 * pi()));
-		if( $tangle<45 || $tangle>315 ){	$txy-=20;	}
-		if( $tangle>=45 && $tangle<135 ){	$txx+=10;	}
-		if( $tangle>=135 && $tangle<225 ){	$txy+=20;	}
-		if( $tangle>=225 && $tangle<315 ){	$txx-=10;	}
+		if( $tangle<45 || $tangle>315 ){	$txy-=25*$r/100;	}
+		if( $tangle>=45 && $tangle<135 ){	$txx+=10*($r+$ccircle)/100;	}
+		if( $tangle>=135 && $tangle<225 ){	$txy+=25*$r/100;	}
+		if( $tangle>=225 && $tangle<315 ){	$txx-=20*($r+$ccircle)/100;	}
 
 
 		$tmptxt1 = $key;
@@ -201,11 +224,7 @@ EOD;
 
 
 
-	// タイトル
 
-	if(! $gtitle==""){
-		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>';
-	}	
 
 
 
