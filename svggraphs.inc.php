@@ -47,7 +47,11 @@ function plugin_svggraphs_convert()
 					require_once PLUGIN_DIR.'graphmeter.inc.php';
 					$html =plugin_graphmeter_draw($argg, $lib);
 					break;
-	
+
+				case 'rader':
+					require_once PLUGIN_DIR.'graphradar.inc.php';
+					$html =plugin_graphradar_draw($argg, $lib);
+					break;	
 
 				default:
 					break;
