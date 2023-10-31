@@ -3,7 +3,7 @@
 // graphmeter.inc.php
 // svggraphシリーズ：横バーグラフ的なメーター表示プラグイン。
 //
-// ver0.05 2023/10/19 H.Tomose
+// ver0.06 2023/10/29 H.Tomose
 
 function plugin_graphmeter_convert()
 {
@@ -47,11 +47,11 @@ function plugin_graphmeter_draw($argg, $lib)
 					break;
 
 				case 'offset': //オフセット
-					$gr_offset = ctype_digit($argss[1])? $argss[1]: $gr_offset;
+					$gr_offset = is_numeric($argss[1])? $argss[1]: $gr_offset;
 					break;
 
 				case 'text_offset': //テキストオフセット
-					$gr_textoffset = ctype_digit($argss[1])? $argss[1]: $gr_textoffset;
+					$gr_textoffset = is_numeric($argss[1])? $argss[1]: $gr_textoffset;
 					break;
 
 				case 'data': //データ値

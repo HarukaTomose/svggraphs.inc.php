@@ -24,11 +24,12 @@ function plugin_graphcircle_draw($argg, $lib)
 	$cx= ($cw+$offx)/2;
 	$cy= ($ch+$offy)/2;
 
-	$r = ($cw>$ch)? $ch/3 : $cw/3;
+	$r = ($cw>$ch)? $ch/2.5 : $cw/2.5;
 
 	// グラフ項目変数
 	$data = array(); //実データ
 	$color = array(); // 色
+	$keyoffset = array(); //表示するデータ文字列の位置補正
 
 	$noshow_target = array();; //非表示にする項目名称
 	$noshow = FALSE;
@@ -52,10 +53,12 @@ function plugin_graphcircle_draw($argg, $lib)
 					$ch = ctype_digit($argss[1])? $argss[1]: $ch;
 					break;
 				case 'offx': //オフセット位置指定
-					$offx = ctype_digit($argss[1])? $argss[1]: $offx;
+					//ctype_digit は「-」を受け付けてくれない。
+					//$offx = ctype_digit($argss[1])? $argss[1]: $offx;
+					$offx = is_numeric($argss[1])? $argss[1]: $offx;
 					break;
 				case 'offy': //オフセット位置指定
-					$offy = ctype_digit($argss[1])? $argss[1]: $offy;
+					$offy = is_numeric($argss[1])? $argss[1]: $offy;
 					break;
 
 				case 'tx': //タイトル座標ｘ
@@ -77,8 +80,6 @@ function plugin_graphcircle_draw($argg, $lib)
 					$datas=$lib->trimexplode(':',$argss[1]);
 					if(! $datas[1]=="")	{
 						$data[htmlsc($datas[0])] = $datas[1];
-
-
 					}
 					break;
 				case 'color':
@@ -94,6 +95,18 @@ function plugin_graphcircle_draw($argg, $lib)
 					$noshow_target = htmlsc($argss[1]);
 					//array_push($noshow_target,htmlsc($argss[1]));
 
+					break;
+				case 'keyoffset':
+					// keyoffsetは "name:offx,offy" という文字列構造。
+					// まず名前チェック。 
+					$datas=$lib->trimexplode(':',$argss[1]);
+					if(! $datas[1]=="")	$tmpname=htmlsc($datas[0]);
+
+					//オフセットの2値のチェック。
+					$datas=$lib->trimexplode(',',$datas[1]);
+					$keyoffset[$tmpname]=array();
+					$keyoffset[$tmpname][0]=is_numeric($datas[0])? $datas[0]: 0;
+					$keyoffset[$tmpname][1]=is_numeric($datas[1])? $datas[1]: 0;
 					break;
 
 				default:
@@ -121,7 +134,7 @@ function plugin_graphcircle_draw($argg, $lib)
 	$cx= ($cw+$offx)/2;
 	$cy= ($ch+$offy)/2;
 
-	$r = ($cw>$ch)? $ch/3 : $cw/3;
+	$r = ($cw>$ch)? $ch/2.5 : $cw/2.5;
 
 	// データ構造の解析。
 	$dcount =0;
@@ -157,7 +170,8 @@ function plugin_graphcircle_draw($argg, $lib)
 
 $html =<<<EOD
 <svg xmlns="http://www.w3.org/2000/svg" width="$cw" height="$ch" viewBox="0 0 $cw $ch">
-<circle cx="$cx" cy="$cy" r="$r" stroke="black" stroke-width="2" />
+<!-- <path d="M 10 10 Q 20 0 40 10 60 20 80 10 100 0 120 10" stroke="black" fill="transparent"/> -->
+<!-- <circle cx="$cx" cy="$cy" r="$r" stroke="black" stroke-width="2" /> -->
 
 EOD;
 	$ctotal=0;
@@ -212,6 +226,9 @@ EOD;
 		if( $tangle>=45 && $tangle<135 ){	$txx+=10*($r+$ccircle)/100;	}
 		if( $tangle>=135 && $tangle<225 ){	$txy+=25*$r/100;	}
 		if( $tangle>=225 && $tangle<315 ){	$txx-=20*($r+$ccircle)/100;	}
+
+		if(array_key_exists(0,$keyoffset[$key] )) $txx+=$keyoffset[$key][0];
+		if(array_key_exists(1,$keyoffset[$key] )) $txy+=$keyoffset[$key][1];
 
 
 		$tmptxt1 = $key;

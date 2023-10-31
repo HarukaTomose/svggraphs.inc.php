@@ -30,7 +30,7 @@ function plugin_graphline_draw($argg, $lib)
 	$scaley = "";
 	$sclisty = array();
 
-	$legend="on";
+	$legend="";
 	$legendx =0;	$legendy=0;
 	$legendw =0;	$legendh=0;
 	

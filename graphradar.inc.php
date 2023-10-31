@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphradar.inc.php,v 0.01 2023/10/22
+// $Id: graphradar.inc.php,v 0.02 2023/10/29
 
 function plugin_graphradar_convert()
 {
@@ -34,12 +34,15 @@ function plugin_graphradar_draw($argg, $lib)
 	// グラフ項目変数
 	$data = array(); //実データ
 	$keyname = array(); // 軸の名称
+	$keyoffset = array(); //軸表示文字列の位置補正
+
 	$color = array(); // 色
 	$fillcolor = array(); // 塗りつぶし色
+	
 
 	$datacount = 0; // テスト用パラメータ。将来はdata countとかを使う
 
-	$legend="on";
+	$legend="";
 	$legendx =0;	$legendy=0;
 	$legendw =0;	$legendh=0;
 
@@ -58,10 +61,10 @@ function plugin_graphradar_draw($argg, $lib)
 					$ch = ctype_digit($argss[1])? $argss[1]: $ch;
 					break;
 				case 'offx': //オフセット位置指定
-					$offx = ctype_digit($argss[1])? $argss[1]: $offx;
+					$offx = is_numeric($argss[1])? $argss[1]: $offx;
 					break;
 				case 'offy': //オフセット位置指定
-					$offy = ctype_digit($argss[1])? $argss[1]: $offy;
+					$offy = is_numeric($argss[1])? $argss[1]: $offy;
 					break;
 
 				case 'tx': //タイトル座標ｘ
@@ -77,7 +80,19 @@ function plugin_graphradar_draw($argg, $lib)
 				case 'keyname':
 					// keyは "key1,key2,key3,..." という文字列構造。
 					$keyname= $lib->trimexplode(',',$argss[1]);
+					break;
 
+				case 'keyoffset':
+					// keyoffsetは "name:offx,offy" という文字列構造。
+					// まず名前チェック。 
+					$datas=$lib->trimexplode(':',$argss[1]);
+					if(! $datas[1]=="")	$tmpname=htmlsc($datas[0]);
+
+					//オフセットの2値のチェック。
+					$datas=$lib->trimexplode(',',$datas[1]);
+					$keyoffset[$tmpname]=array();
+					$keyoffset[$tmpname][0]=is_numeric($datas[0])? $datas[0]: 0;
+					$keyoffset[$tmpname][1]=is_numeric($datas[1])? $datas[1]: 0;
 					break;
 
 				case 'data':
@@ -94,7 +109,6 @@ function plugin_graphradar_draw($argg, $lib)
 						//array_push($data,$argss[1]);
 						$color[htmlsc($datas[0])] = $datas[1];
 					}
-					////////tomoseDBG("push: key[".$datas[0]."][".$datas[1]."]");
 					break;
 
 				case 'fillcolor':
@@ -117,6 +131,8 @@ function plugin_graphradar_draw($argg, $lib)
 
 						$scales[htmlsc($v)]=$v;
 					}
+					break;
+
 				case 'legend':
 					$legend=htmlsc($argss[1]);
 					break;
@@ -203,7 +219,10 @@ EOD;
 		$tmpname= $keyname[$i];
 
 		$textx= intval($cx -(8*mb_strlen($tmpname)) + 1.1*$r * sin($sangle / 180 * pi()));
+
 		$texty= intval($cy +6 - 1.1*$r * cos($sangle / 180 * pi()));
+		if(array_key_exists(0,$keyoffset[$tmpname] )) $textx+=$keyoffset[$tmpname][0];
+		if(array_key_exists(1,$keyoffset[$tmpname] )) $texty+=$keyoffset[$tmpname][1];
 
 $html2 .=<<<EOD
 <line x1="$cx " y1="$cy" x2="$endx" y2="$endy" stroke="gray" stroke-width="1"/>
@@ -293,7 +312,8 @@ EOD;
 	$legendh= count($data)*15;
 	$legendw= 50+$legendw*8;
 
-	if(!$legend==""){
+
+	if($legend!=""){
 
 	$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
 $html .= <<<EOD
