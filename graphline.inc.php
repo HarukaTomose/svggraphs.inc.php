@@ -1,5 +1,5 @@
 <?php
-// $Id: graphline.inc.php,v 0.05 2023/10/19 Haruka Tomose
+// $Id: graphline.inc.php,v 0.08 2023/11/2 Haruka Tomose
 
 function plugin_graphline_convert()
 {
@@ -18,6 +18,7 @@ function plugin_graphline_draw($argg, $lib)
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
+	$titlestyle=array(0 => 'black'); // タイトル用のスタイル指定データ
 
 	// グラフ座標軸関連
 	$miny=0;	$maxy=0;	// y軸の値域
@@ -38,7 +39,8 @@ function plugin_graphline_draw($argg, $lib)
 	// 個々の折れ線用変数
 	$data = array(); //実データ
 	$color = array(); // 色
-
+	$linestyle=array(); // 線のスタイル指定データ
+	$linemarker = array(); //マーカーの指定データ
 
 
 	// 引数処理
@@ -94,6 +96,10 @@ function plugin_graphline_draw($argg, $lib)
 					$gtitle=htmlsc($argss[1]);
 					break;
 
+				case 'titlestyle':
+					$titlestyle= $lib->trimexplode(',',$argss[1]);
+					break;
+
 				case 'legend':
 					$legend=htmlsc($argss[1]);
 					break;
@@ -141,6 +147,21 @@ function plugin_graphline_draw($argg, $lib)
 					////tomoseDBG("push: key[".$datas[0]."][".$datas[1]."]");
 					break;
 
+				case 'linestyle':
+					//$linestyle= $lib->trimexplode(',',$argss[1]);
+					$datas=$lib->trimexplode(':',$argss[1]);
+					if(! $datas[1]=="")	{
+						$linestyle[htmlsc($datas[0])] = $datas[1];
+					}
+					break;
+				case 'marker':
+					//$linestyle= $lib->trimexplode(',',$argss[1]);
+					$datas=$lib->trimexplode(':',$argss[1]);
+					if(! $datas[1]=="")	{
+						$linemarker[htmlsc($datas[0])] = $datas[1];
+					}
+					break;
+
 				default:
 					// 知らないコマンド。捨てる。
 					break;
@@ -151,9 +172,10 @@ function plugin_graphline_draw($argg, $lib)
 			// pukiwiki表/cvsを想定して、データとみなす。
 			// この場合、最初の有効要素をキーとみなす。
 			$datas=$lib->trimexplode(',',$arg);
-			// 最初の1つ目は必ず捨てる。
-			$tmp = array_shift($datas);
-			$tmp = array_shift($datas);
+			// カンマ区切りなのでデータ構造は次の通り
+			// (null),data名,d1,d2,...
+			$tmp = array_shift($datas); // 最初のnullは捨てる
+			$tmp = array_shift($datas); //データ名を確保
 			if(! $tmp=="") $data[$tmp] = implode(",",$datas);
 
 		}
@@ -206,8 +228,8 @@ $html =<<<EOD
 
 <svg xmlns="http://www.w3.org/2000/svg" width="$cw" height="$ch" viewBox="0 0 $cw $ch">
 
-<line x1="$offx" y1="$offy" x2="$offx" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:2" />
-<line x1="$offx" y1="$eoh" x2="$eow" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:2" />
+<line x1="$offx" y1="$offy" x2="$offx" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:1" />
+<line x1="$offx" y1="$eoh" x2="$eow" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:1" />
 <clipPath id="cliparea"><rect x="$offx" y="$offy" width="$clipx" height="$clipy" />
 </clipPath>
 
@@ -271,9 +293,30 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 	}
 
 
+	//-----------------
+	// タイトル
 	if(! $gtitle==""){
-		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>'."\n";
-	}	
+		//$fonteffect = 'font-weight="bold"';
+		$fonteffect =' fill="'.$titlestyle[0].'"';
+		array_shift($titlestyle);
+		foreach($titlestyle as $param){
+			switch ($param)
+			{
+				case 'bold':
+					$fonteffect .=' font-weight="bold"';
+					break;
+
+				case 'underline':
+					$fonteffect .=' text-decoration="underline"';
+					break;
+
+				default:
+					// 知らない指定は捨てる。
+					break;
+			}
+		}
+		$html .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$gtitle.'</text>';
+	}
 
 //<clipPath id="cliparea">
 //<rect x="$minx" y="$miny" width="$maxx" height="$maxy" />
@@ -282,12 +325,73 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 
 	$precol =0;
 
+	//--------------
 	// 各データごとの折れ線処理
 	foreach( $dtable as $k =>$line){
-		$legendw= (strlen($k)>$legendw)?strlen($k):$legendw;
-		//tomoseDBG("start:".$k." len[".strlen($k)."]");
+		//$legendw= (strlen($k)>$legendw)?strlen($k):$legendw;
+		$legendw= (mb_strwidth($k)>$legendw)?mb_strwidth($k):$legendw;
 
 		$xwork = $offx;
+		// 線の色指定。
+		$ccolor= (!$color[$k]=="")? $color[$k]:$lib->getnextcolor($precol);
+		$precol=$ccolor;
+
+		// マーカーを置く場合の定義
+		$mwork = "";
+		if($linemarker[$k]!=""){
+			$mwork = "m_".$k;
+			$mwork2= "";
+			$workprm = $lib->trimexplode(',',$linemarker[htmlsc($k)]);
+			$worksize = 9;
+			$worksize2=floor($worksize/2);
+			foreach($workprm as $ppp){
+				$pmode = mb_substr($ppp,0,1);
+				$parg = mb_substr($ppp,1);
+				$parg =is_numeric($parg)?$parg:9;
+				$worksize=$parg;
+				$worksize2=floor($worksize/2)+1;
+
+				switch ($pmode)
+				{
+					case 'c':
+						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.($worksize2-1).'" stroke="none" stroke-width="1" fill="'.$ccolor.'"/>';
+						break;
+					case 'd':
+						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="none" stroke-width="1"  fill="'.$ccolor.'"/>';
+						break;
+
+					case 'x':
+						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$ccolor.'" stroke-width="1"/>'.
+'<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="'.$ccolor.'" stroke-width="1"/>';
+
+						break;
+
+					default:
+					case 's':
+						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="none" stroke-width="1" fill="'.$ccolor.'"/>';
+
+						break;
+
+				}
+
+			}
+
+$worksize2=floor($worksize/2)+1;
+
+$html .= <<<EOD
+<marker id="$mwork" markerWidth="$worksize" markerHeight="$worksize" refX="$worksize2" refY="$worksize2">
+$mwork2
+</marker>
+EOD;
+
+		}
+/*
+$html .=<<<EOD
+  <marker id="marker1" markerWidth="5" markerHeight="5" refX="2" refY="2">
+    <circle cx="1" cy="1" r="2" stroke="none" fill="#f00"/>
+  </marker>
+EOD;
+*/
 		$html .='<polyline points="';
 
 		foreach( $line as $key => $value){
@@ -312,19 +416,57 @@ $xpos,$ypos
 EOD;
 
 		}
-		// 線の色指定。
-		$ccolor= (!$color[$k]=="")? $color[$k]:$lib->getnextcolor($precol);
-		$precol=$ccolor;
 //if(!$color[$k]=="") $ccolor=$color[$k];
 
-$html .='" clip-path="url(#cliparea)" style="fill:none;stroke:'.$ccolor.';stroke-width:2" />';
+		// 線のスタイル指定
+//		$lstyle = 'stroke-dasharray="5"';
+		$lstyle = '';
+		$swidth = '1';
+		$stroke = '';
+		if( $linestyle[htmlsc($k)]!=""){
+			$workprm = $lib->trimexplode(',',$linestyle[htmlsc($k)]);
+			foreach($workprm as $ppp){
+				$pmode = mb_substr($ppp,0,1);
+				$parg = mb_substr($ppp,1);
+				switch ($pmode)
+				{
+					case 's':
+						$parg = is_numeric($parg)?$parg:5;
+						$stroke .= ($stroke=="")?$parg :','.$parg ;
+						//$lstyle .= ' stroke-dasharray="'.$parg .'"';
+						break;
+/*
+					case 'm':
+						$parg = is_numeric($parg)?$parg:5;
+						$lstyle .= ' marker-mid="url(#marker1)"';
+						break;
+*/
+					case 'w':
+						$swidth = is_numeric($parg)?$parg:1;
+						break;
+
+					default:
+						// 知らない指定は捨てる。
+						break;
+				}
+			
+			}
+
+		}
+		$lstyle .= ($stroke!="")?' stroke-dasharray="'.$stroke .'"':'';
+
+		if($mwork!=""){
+			$lstyle .= ' marker-mid="url(#'.$mwork.')"';
+		}
+
+$html .='" clip-path="url(#cliparea)" style="fill:none;stroke:'.$ccolor.';stroke-width:'.$swidth.'" '.$lstyle.'/>';
 $html .="\n";
 	}
 
 
 	//凡例
-	$legendh= count($data)*14;
-	$legendw= 50+$legendw*7;
+	$legendh= count($data)*13+6;
+	$legendw= 40+$legendw*7;
 
 	if(!$legend==""){
 
@@ -338,10 +480,13 @@ EOD;
 	
 		$ccolor= (!$color[$k]=="")? $color[$k]:$lib->getnextcolor($precol);
 		$precol=$ccolor;
+		$html .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
+/*
 $html .=<<<EOD
 <line x1="10" y1="$tmp" x2="30" y2="$tmp" style="stroke:$ccolor;stroke-width:1" />
 
 EOD;
+*/
 		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
 		$tmp+=12;
 	}

@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphradar.inc.php,v 0.02 2023/10/29
+// $Id: graphradar.inc.php,v 0.08 2023/11/2
 
 function plugin_graphradar_convert()
 {
@@ -19,6 +19,7 @@ function plugin_graphradar_draw($argg, $lib)
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
+	$titlestyle=array(0 => 'black'); // タイトル用のスタイル指定データ
 
 	// グラフ座標軸関連	
 	$cx= ($cw+$offx)/2;
@@ -35,6 +36,7 @@ function plugin_graphradar_draw($argg, $lib)
 	$data = array(); //実データ
 	$keyname = array(); // 軸の名称
 	$keyoffset = array(); //軸表示文字列の位置補正
+	$linemarker = array(); //マーカーの指定データ
 
 	$color = array(); // 色
 	$fillcolor = array(); // 塗りつぶし色
@@ -76,6 +78,9 @@ function plugin_graphradar_draw($argg, $lib)
 				case 'title':
 					$gtitle=htmlsc($argss[1]);
 					break;
+				case 'titlestyle':
+					$titlestyle= $lib->trimexplode(',',$argss[1]);
+					break;
 
 				case 'keyname':
 					// keyは "key1,key2,key3,..." という文字列構造。
@@ -100,8 +105,8 @@ function plugin_graphradar_draw($argg, $lib)
 					$datas=$lib->trimexplode(':',$argss[1]);
 					if(! $datas[1]=="")	{
 						$data[htmlsc($datas[0])] = $datas[1];
-
 					}
+
 					break;
 				case 'color':
 					$datas=$lib->trimexplode(':',$argss[1]);
@@ -112,11 +117,22 @@ function plugin_graphradar_draw($argg, $lib)
 					break;
 
 				case 'fillcolor':
+					// データ名:色名[,塗りつぶし率」とする。
 					$datas=$lib->trimexplode(':',$argss[1]);
 					if(! $datas[1]=="")	{
 						$fillcolor[htmlsc($datas[0])] = $datas[1];
 					}
 					break;
+
+				case 'marker':
+					//$linestyle= $lib->trimexplode(',',$argss[1]);
+					$datas=$lib->trimexplode(':',$argss[1]);
+					if(! $datas[1]=="")	{
+						$linemarker[htmlsc($datas[0])] = $datas[1];
+					}
+
+					break;
+
 
 				case 'vmax':
 					$vmax = ctype_digit($argss[1])? $argss[1]: $vmax;
@@ -158,7 +174,6 @@ function plugin_graphradar_draw($argg, $lib)
 			$tmp = array_shift($datas);
 			$tmp = array_shift($datas);
 			if(! $tmp=="") $data[$tmp] = implode(",",$datas);
-
 		}
 	}
 
@@ -264,6 +279,8 @@ EOD;
 	foreach( $dtable as $lname =>$tline){
 		$stroke ="";
 		$i=0;
+		$lstyle="";
+
 		foreach($tline as $key => $value){
 
 			$sangle= $i*360/$datacount;
@@ -280,53 +297,125 @@ EOD;
 
 		}
 		$lcolor = ($color[$lname])?$color[$lname]:"black";
-		$fcolor = ($fillcolor[$lname])?$fillcolor[$lname]:"none";
+		$wcolor=$lib->trimexplode(',',($fillcolor[$lname]));
+		$wcolor[1]=is_numeric($wcolor[1])?$wcolor[1]:0.2;
+
+		$fcolor = ($wcolor[0])?$wcolor[0]:"none";
+		$fopa = $wcolor[1];
+
 
 //		$html .='<text x="10" y="10" >['.$stroke.']</text>';
 //		$html .='<text x="10" y="20" >['.$key.']</text>';
 //		$html .='<text x="10" y="30" >['.$lcolor.']</text>';
 	
+		$mwork = "";
+		if($linemarker[$lname]!=""){
+			$mwork = "m_".$lname;
+			$mwork2= "";
+			$workprm = $lib->trimexplode(',',$linemarker[htmlsc($lname)]);
+			$worksize = 9;
+			$worksize2=floor($worksize/2);
+			foreach($workprm as $ppp){
+				$pmode = mb_substr($ppp,0,1);
+				$parg = mb_substr($ppp,1);
+				$parg =is_numeric($parg)?$parg:9;
+				$worksize=$parg;
+				$worksize2=floor($worksize/2)+1;
 
-$html .=<<<EOD
+				switch ($pmode)
+				{
+					case 'c':
+						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.$worksize2.'" stroke="none" fill="'.$lcolor.'"/>';
+						break;
+					case 'd':
+						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="none" stroke-width="1"  fill="'.$lcolor.'"/>';
+						break;
 
-<polygon points="$stroke" stroke="$lcolor" fill="$fcolor" fill-opacity="0.2" />
+					case 'x':
+						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>'.
+'<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>';
 
+						break;
+
+					default:
+					case 's':
+						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="none" fill="'.$lcolor.'"/>';
+
+						break;
+
+				}
+
+			}
+
+$worksize2=($worksize/2)+1;
+$html .= <<<EOD
+<marker id="$mwork" markerWidth="$worksize" markerHeight="$worksize" refX="$worksize2" refY="$worksize2">
+$mwork2
+</marker>
 EOD;
+			$lstyle .= ' marker-mid="url(#'.$mwork.')" marker-start="url(#'.$mwork.')"';
+
+		}
+
+
+$html .='<polygon points="'.$stroke.'" stroke="'.$lcolor.'" fill="'.$fcolor.'" fill-opacity="'.$fopa.'" '.$lstyle.' />';
+
 
 	}
 
-
+	//-----------------
 	// タイトル
 	if(! $gtitle==""){
-		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>';
+		//$fonteffect = 'font-weight="bold"';
+		$fonteffect =' fill="'.$titlestyle[0].'"';
+		array_shift($titlestyle);
+		foreach($titlestyle as $param){
+			switch ($param)
+			{
+				case 'bold':
+					$fonteffect .=' font-weight="bold"';
+					break;
+
+				case 'underline':
+					$fonteffect .=' text-decoration="underline"';
+					break;
+
+				default:
+					// 知らない指定は捨てる。
+					break;
+			}
+		}
+		$html .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$gtitle.'</text>';
 	}
 
 
 	$ctotal=0;
 
+	//-----------------
 	//凡例
-	foreach( $dtable as $k =>$line){
-		$legendw= (strlen($k)>$legendw)?strlen($k):$legendw;
-	}
-	
-	$legendh= count($data)*15;
-	$legendw= 50+$legendw*8;
-
-
 	if($legend!=""){
+		// 凡例の幅を求めるために、データ名称の一番長いものを探す。
+		foreach( $dtable as $k =>$line){
+			//$legendw= (strlen($k)>$legendw)?strlen($k):$legendw;
+			$legendw= (mb_strwidth($k)>$legendw)?mb_strwidth($k):$legendw;
+		}
+		
+		$legendh= count($data)*13+6;
+		$legendw= 50+$legendw*7;
 
-	$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
+
+		$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
 $html .= <<<EOD
 	<rect width="$legendw" height="$legendh" style="fill:white;stroke-width:1;stroke:black" />
 EOD;
-	$tmp=12;
-	$precol=0;
-	foreach($data as $key=>$val){
+		$tmp=12;
+		$precol=0;
+		foreach($data as $key=>$val){
 	
 		$ccolor= (!$color[$key]=="")? $color[$key]:$lib->getnextcolor($precol);
 		$precol=$ccolor;
-$html .=<<<EOD
-<line x1="10" y1="$tmp" x2="30" y2="$tmp" style="stroke:$ccolor;stroke-width:1" />
+		$html .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
+
 
 EOD;
 		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
@@ -334,35 +423,6 @@ EOD;
 	}
 	$html .="</g>";
 	}	
-
-
-/*
-	//各値のデータ表示
-	foreach($dtable as $key => $value){
-		if( $noshow_target==$key ) $noshow=TRUE;
-		if( $noshow ) continue;
-
-		$tangle= 360*($ctotal+$value/2)/$tvalue;
-		$txx= intval($cx + $r/2 * sin($tangle / 180 * pi()) -10);
-		$txy= intval($cy - $r/2 * cos($tangle / 180 * pi()));
-		if( $tangle<45 || $tangle>315 ){	$txy-=25*$r/100;	}
-		if( $tangle>=45 && $tangle<135 ){	$txx+=10*($r+$ccircle)/100;	}
-		if( $tangle>=135 && $tangle<225 ){	$txy+=25*$r/100;	}
-		if( $tangle>=225 && $tangle<315 ){	$txx-=20*($r+$ccircle)/100;	}
-
-
-		$tmptxt1 = $key;
-		$tmptxt2 = round((($value/$tvalue)*100),2)."%";
-		$html .= '<text x="'.$txx.'" y="'.($txy-6).'" fill="black" font-size="11">'.$tmptxt1.'</text>';
-		$html .= '<text x="'.$txx.'" y="'.($txy+5).'" fill="black" font-size="11">'.$tmptxt2.'</text>';
-		$ctotal+=$value;
-
-	}
-*/
-
-
-
-
 
 
 $html .='</svg>';

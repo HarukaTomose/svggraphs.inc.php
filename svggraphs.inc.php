@@ -1,5 +1,5 @@
 <?php
-// $Id: svggraphs.inc.php,v 0.04 2023/10/13 Haruka Tomose
+// $Id: svggraphs.inc.php,v 0.08 2023/11/02 Haruka Tomose
 // svgグラフプラグイン。
 // このプラグインは複数プラグインによる階層的な構造にする。
 // svggraph はその大元プラグイン。
@@ -128,12 +128,16 @@ class Plugin_svggraphs_lib
 
 						// ファイル読み込み指定。
 						$fd= file(DATA_DIR.encode($prma[1]).".txt");
+						$insertpos =0;
 						foreach($fd as $line ){
 							// pukiwiki1.5 の #auther を捨てる処理。
 							if( substr($line,0,1)=="#") continue;
-							// 改行とっぱらって配列の後ろに追加。
+							// 改行とっぱらって配列の先頭側に挿入追加。
+							// データの順に意味があるので、順番が狂わないように挿入位置を指定して追加する。
 							$line = trim(str_replace(array("\r\n","\r","\n"), "", $line));
-							if( !$line=="") array_push($ppp,$line);
+							//if( !$line=="") array_splice($ppp,$line);
+							if( !$line=="") array_push($ppp,$insertpos,0,$line);
+							$insertpos +=1;
 						}
 						
 						break;
