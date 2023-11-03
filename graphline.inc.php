@@ -1,5 +1,5 @@
 <?php
-// $Id: graphline.inc.php,v 0.08 2023/11/2 Haruka Tomose
+// $Id: graphline.inc.php,v 0.09 2023/11/3 Haruka Tomose
 
 function plugin_graphline_convert()
 {
@@ -296,31 +296,8 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 	//-----------------
 	// タイトル
 	if(! $gtitle==""){
-		//$fonteffect = 'font-weight="bold"';
-		$fonteffect =' fill="'.$titlestyle[0].'"';
-		array_shift($titlestyle);
-		foreach($titlestyle as $param){
-			switch ($param)
-			{
-				case 'bold':
-					$fonteffect .=' font-weight="bold"';
-					break;
-
-				case 'underline':
-					$fonteffect .=' text-decoration="underline"';
-					break;
-
-				default:
-					// 知らない指定は捨てる。
-					break;
-			}
-		}
-		$html .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$gtitle.'</text>';
+		$html .= $lib->CreateTitle( $gtitle, $tx, $ty , $titlestyle );
 	}
-
-//<clipPath id="cliparea">
-//<rect x="$minx" y="$miny" width="$maxx" height="$maxy" />
-//</clipPath>
 
 
 	$precol =0;
@@ -339,7 +316,8 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 		// マーカーを置く場合の定義
 		$mwork = "";
 		if($linemarker[$k]!=""){
-			$mwork = "m_".$k;
+			// $mwork = "m_".$k;
+			$mwork = $lib->GetMarkerID();
 			$mwork2= "";
 			$workprm = $lib->trimexplode(',',$linemarker[htmlsc($k)]);
 			$worksize = 9;
@@ -354,21 +332,23 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 				switch ($pmode)
 				{
 					case 'c':
-						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.($worksize2-1).'" stroke="none" stroke-width="1" fill="'.$ccolor.'"/>';
+						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.($worksize2-1).'" stroke="white" stroke-width="1" fill="'.$ccolor.'"/>';
 						break;
 					case 'd':
-						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="none" stroke-width="1"  fill="'.$ccolor.'"/>';
+						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="white" stroke-width="1"  fill="'.$ccolor.'"/>';
 						break;
 
 					case 'x':
-						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$ccolor.'" stroke-width="1"/>'.
+						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="white" stroke-width="3" stroke-linecap="round" />'.
+'<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="white" stroke-width="3" stroke-linecap="round" />'.'<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$ccolor.'" stroke-width="1"/>'.
 '<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="'.$ccolor.'" stroke-width="1"/>';
+
 
 						break;
 
 					default:
 					case 's':
-						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="none" stroke-width="1" fill="'.$ccolor.'"/>';
+						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="white" stroke-width="1" fill="'.$ccolor.'"/>';
 
 						break;
 
@@ -416,10 +396,8 @@ $xpos,$ypos
 EOD;
 
 		}
-//if(!$color[$k]=="") $ccolor=$color[$k];
 
 		// 線のスタイル指定
-//		$lstyle = 'stroke-dasharray="5"';
 		$lstyle = '';
 		$swidth = '1';
 		$stroke = '';
@@ -435,12 +413,7 @@ EOD;
 						$stroke .= ($stroke=="")?$parg :','.$parg ;
 						//$lstyle .= ' stroke-dasharray="'.$parg .'"';
 						break;
-/*
-					case 'm':
-						$parg = is_numeric($parg)?$parg:5;
-						$lstyle .= ' marker-mid="url(#marker1)"';
-						break;
-*/
+
 					case 'w':
 						$swidth = is_numeric($parg)?$parg:1;
 						break;
@@ -464,33 +437,10 @@ $html .="\n";
 	}
 
 
-	//凡例
-	$legendh= count($data)*13+6;
-	$legendw= 40+$legendw*7;
-
+	//凡例。
 	if(!$legend==""){
-
-	$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
-$html .= <<<EOD
-	<rect width="$legendw" height="$legendh" style="fill:white;stroke-width:1;stroke:black" />
-EOD;
-	$tmp=12;
-	$precol=0;
-	foreach($data as $key=>$val){
+		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy );
 	
-		$ccolor= (!$color[$k]=="")? $color[$k]:$lib->getnextcolor($precol);
-		$precol=$ccolor;
-		$html .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
-/*
-$html .=<<<EOD
-<line x1="10" y1="$tmp" x2="30" y2="$tmp" style="stroke:$ccolor;stroke-width:1" />
-
-EOD;
-*/
-		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
-		$tmp+=12;
-	}
-	$html .="</g>";
 	}	
 
 

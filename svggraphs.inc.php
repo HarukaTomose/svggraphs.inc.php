@@ -1,5 +1,5 @@
 <?php
-// $Id: svggraphs.inc.php,v 0.08 2023/11/02 Haruka Tomose
+// $Id: svggraphs.inc.php,v 0.09 2023/11/03 Haruka Tomose
 // svgグラフプラグイン。
 // このプラグインは複数プラグインによる階層的な構造にする。
 // svggraph はその大元プラグイン。
@@ -8,8 +8,13 @@
 function plugin_svggraphs_convert()
 {
 	global $vars;
+	static $lib = 0;
 	$html = "#svggraps : bad parametor.";
-	$lib = new Plugin_svggraphs_lib();
+
+	// クラスインスタンスは1回のコールで1つしか作らないようにする。
+	// 複数のグラフを同一ページで表示しようとしたとき、
+	// マーカー名称をかぶらないものにする処理のため。
+	if( $lib==0 ) $lib = new Plugin_svggraphs_lib();
 	$lib->initLib();
 
 	$args=func_get_args();
@@ -89,9 +94,13 @@ class Plugin_svggraphs_lib
 			
 		);
 
+	// マーカーの名称を重複しないようにするための変数
+	private $mcount;
+
 	function initLib()
 	{
 		//$testprop="test";
+		$mcount=0;
 	}
 
 	function plugin_graphline_parse_arg($ppp)
@@ -201,7 +210,87 @@ class Plugin_svggraphs_lib
 
 	}
 
+	// 重複しない「マーカー名称」を戻すための関数
+	function GetMarkerID()
+	{
 
+		$rslt = "svggraph_marker".$this->mcount;
+
+		$this->mcount +=1;
+		return $rslt;
+		
+	}
+
+	// 凡例作成モジュール。
+	// 凡例は複数のグラフで使うので、ライブラリに入れる。
+	function CreateLegend( $data, $color, $x, $y ){
+		$rslt = "";
+
+		$legendw=0;
+		foreach( $data as $k =>$line){
+			$legendw= (mb_strwidth($k)>$legendw)?mb_strwidth($k):$legendw;
+		}
+
+		$legendh= count($data)*13+6;
+		$legendw= 40+$legendw*7;
+
+		$rslt .='<g transform="translate('.$x.','.$y.')" font-size="11">';
+		$rslt .= <<<EOD
+<rect width="$legendw" height="$legendh" style="fill:white;stroke-width:1;stroke:black" />
+EOD;
+		$tmp=12;
+		$precol=0;
+
+
+		foreach($data as $key=>$val){
+	
+			$ccolor= (!$color[$key]=="")? $color[$key]:$this->getnextcolor($precol);
+			$precol=$ccolor;
+			$rslt .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
+			$rslt .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
+			$tmp+=12;
+
+		}
+
+//		tomoseDBG("legend[".$rslt."]");
+		$rslt .="</g>";
+
+		return $rslt;
+
+	}
+
+	function CreateTitle( $text, $tx, $ty , $style ){
+
+		$rslt = "";
+
+		//$fonteffect = 'font-weight="bold"';
+		$fonteffect =' fill="'.$style[0].'"';
+		array_shift($style);
+		foreach($style as $param){
+			switch ($param)
+			{
+				case 'bold':
+					$fonteffect .=' font-weight="bold"';
+					break;
+
+				case 'underline':
+					$fonteffect .=' text-decoration="underline"';
+					break;
+
+				default:
+					// 知らない指定は捨てる。
+					break;
+			}
+		}
+		$rslt .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$text.'</text>';
+
+			
+		return $rslt;
+
+	}
+
+
+	
 }
 
 ?>

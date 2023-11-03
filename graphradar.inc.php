@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphradar.inc.php,v 0.08 2023/11/2
+// $Id: graphradar.inc.php,v 0.09 2023/11/3
 
 function plugin_graphradar_convert()
 {
@@ -218,7 +218,6 @@ $html =<<<EOD
 <circle cx="$cx" cy="$cy" r="$r" stroke="none" stroke-width="1" fill="white"/>
 -->
 EOD;
-	$ctotal=0;
 	$precol='lightgrey';
 
 	// 軸
@@ -285,9 +284,6 @@ EOD;
 
 			$sangle= $i*360/$datacount;
 
-//			if( $maxy_auto && $value>$maxy) $maxy=$value;
-//			if( $miny_auto && $value<$miny) $miny=$value;
-
 			$endx= intval($cx + $r*($value/$vmax) * sin($sangle / 180 * pi()));
 			$endy= intval($cy - $r*($value/$vmax) * cos($sangle / 180 * pi()));
 
@@ -303,11 +299,7 @@ EOD;
 		$fcolor = ($wcolor[0])?$wcolor[0]:"none";
 		$fopa = $wcolor[1];
 
-
-//		$html .='<text x="10" y="10" >['.$stroke.']</text>';
-//		$html .='<text x="10" y="20" >['.$key.']</text>';
-//		$html .='<text x="10" y="30" >['.$lcolor.']</text>';
-	
+		// マーカー	
 		$mwork = "";
 		if($linemarker[$lname]!=""){
 			$mwork = "m_".$lname;
@@ -325,21 +317,24 @@ EOD;
 				switch ($pmode)
 				{
 					case 'c':
-						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.$worksize2.'" stroke="none" fill="'.$lcolor.'"/>';
+						$mwork2=  '<circle cx="'.$worksize2.'" cy="'.$worksize2.'" r="'.($worksize2-1).'" stroke="white" stroke-width="1" fill="'.$lcolor.'"/>';
 						break;
 					case 'd':
-						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="none" stroke-width="1"  fill="'.$lcolor.'"/>';
+						$mwork2=  '<polygon points="'.$worksize2.',1 '.($worksize).','.($worksize).' 0,'.($worksize).'" stroke="white" stroke-width="1"  fill="'.$lcolor.'"/>';
 						break;
 
 					case 'x':
-						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>'.
+						//$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>'.'<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>';
+						$mwork2=  '<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="white" stroke-width="3" stroke-linecap="round" />'.
+'<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="white" stroke-width="3" stroke-linecap="round" />'.'<line x1="1" y1="1" x2="'.($worksize-1).'" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>'.
 '<line x1="'.($worksize-1).'" y1="1" x2="1" y2="'.($worksize-1).'" stroke="'.$lcolor.'" stroke-width="1"/>';
+
 
 						break;
 
 					default:
 					case 's':
-						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="none" fill="'.$lcolor.'"/>';
+						$mwork2=  ' <rect x="1" y="1" width="'.($worksize-1).'" height="'.($worksize-1).'" stroke="white" stroke-width="1" fill="'.$lcolor.'"/>';
 
 						break;
 
@@ -366,62 +361,13 @@ $html .='<polygon points="'.$stroke.'" stroke="'.$lcolor.'" fill="'.$fcolor.'" f
 	//-----------------
 	// タイトル
 	if(! $gtitle==""){
-		//$fonteffect = 'font-weight="bold"';
-		$fonteffect =' fill="'.$titlestyle[0].'"';
-		array_shift($titlestyle);
-		foreach($titlestyle as $param){
-			switch ($param)
-			{
-				case 'bold':
-					$fonteffect .=' font-weight="bold"';
-					break;
-
-				case 'underline':
-					$fonteffect .=' text-decoration="underline"';
-					break;
-
-				default:
-					// 知らない指定は捨てる。
-					break;
-			}
-		}
-		$html .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$gtitle.'</text>';
+		$html .= $lib->CreateTitle( $gtitle, $tx, $ty , $titlestyle );
 	}
-
-
-	$ctotal=0;
 
 	//-----------------
-	//凡例
+	//凡例。
 	if($legend!=""){
-		// 凡例の幅を求めるために、データ名称の一番長いものを探す。
-		foreach( $dtable as $k =>$line){
-			//$legendw= (strlen($k)>$legendw)?strlen($k):$legendw;
-			$legendw= (mb_strwidth($k)>$legendw)?mb_strwidth($k):$legendw;
-		}
-		
-		$legendh= count($data)*13+6;
-		$legendw= 50+$legendw*7;
-
-
-		$html .='<g transform="translate('.$legendx.','.$legendy.')" font-size="11">';
-$html .= <<<EOD
-	<rect width="$legendw" height="$legendh" style="fill:white;stroke-width:1;stroke:black" />
-EOD;
-		$tmp=12;
-		$precol=0;
-		foreach($data as $key=>$val){
-	
-		$ccolor= (!$color[$key]=="")? $color[$key]:$lib->getnextcolor($precol);
-		$precol=$ccolor;
-		$html .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
-
-
-EOD;
-		$html .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
-		$tmp+=12;
-	}
-	$html .="</g>";
+		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy );
 	}	
 
 

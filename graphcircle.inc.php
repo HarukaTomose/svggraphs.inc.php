@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphcircle.inc.php,v 0.05 2023/10/19
+// $Id: graphcircle.inc.php,v 0.09 2023/11/03
 
 function plugin_graphcircle_convert()
 {
@@ -19,6 +19,7 @@ function plugin_graphcircle_draw($argg, $lib)
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
+	$titlestyle=array(0 => 'black'); // タイトル用のスタイル指定データ
 
 	// グラフ座標軸関連	
 	$cx= ($cw+$offx)/2;
@@ -69,6 +70,9 @@ function plugin_graphcircle_draw($argg, $lib)
 					break;
 				case 'title':
 					$gtitle=htmlsc($argss[1]);
+					break;
+				case 'titlestyle':
+					$titlestyle= $lib->trimexplode(',',$argss[1]);
 					break;
 
 				case 'center': //中央に円を描く場合の円半径
@@ -209,7 +213,7 @@ EOD;
 
 	// タイトル
 	if(! $gtitle==""){
-		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>';
+		$html .= $lib->CreateTitle( $gtitle, $tx, $ty , $titlestyle );
 	}
 
 	$ctotal=0;
