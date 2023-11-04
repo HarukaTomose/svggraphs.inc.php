@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphradar.inc.php,v 0.09 2023/11/3
+// $Id: graphradar.inc.php,v 0.10 2023/11/4
 
 function plugin_graphradar_convert()
 {
@@ -50,7 +50,9 @@ function plugin_graphradar_draw($argg, $lib)
 
 	// 引数処理
 	foreach( $argg as $key => $arg){
-		////////tomoseDBG("arg[".$key."][".$arg."]");
+		// 明示的なコメント除外。これがないとコメントに"="をかけないので。 
+		if( mb_substr($arg,0,2)=="//") continue;
+		if( mb_substr($arg,0,1)=="#") continue;
 
 		if(strpos($arg,'=')){
 			$argss= $lib->trimexplode('=',$arg);
@@ -167,7 +169,9 @@ function plugin_graphradar_draw($argg, $lib)
 			}
 		}else{
 			// 入力行に = がないケース。
-			// pukiwiki表/cvsを想定して、データとみなす。
+			// 先頭にカンマがある場合、pukiwiki表/cvsによるデータとみなす。
+			if( mb_substr($arg,0,1)!=",") continue;
+
 			// この場合、最初の有効要素をキーとみなす。
 			$datas=$lib->trimexplode(',',$arg);
 			// 最初の1つ目は必ず捨てる。

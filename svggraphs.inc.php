@@ -1,5 +1,5 @@
 <?php
-// $Id: svggraphs.inc.php,v 0.09 2023/11/03 Haruka Tomose
+// $Id: svggraphs.inc.php,v 0.10 2023/11/4 Haruka Tomose
 // svgグラフプラグイン。
 // このプラグインは複数プラグインによる階層的な構造にする。
 // svggraph はその大元プラグイン。
@@ -158,6 +158,7 @@ class Plugin_svggraphs_lib
 		return $ppp;
 	}
 
+
 	function trimexplode( $sep, $arr)
 	{
 	
@@ -221,7 +222,7 @@ class Plugin_svggraphs_lib
 		
 	}
 
-	// 凡例作成モジュール。
+	// 凡例作成メソッド。
 	// 凡例は複数のグラフで使うので、ライブラリに入れる。
 	function CreateLegend( $data, $color, $x, $y ){
 		$rslt = "";
@@ -259,22 +260,32 @@ EOD;
 
 	}
 
+	// タイトル作成メソッド。
+	// 凡例は複数のグラフで使うので、ライブラリに入れる。
 	function CreateTitle( $text, $tx, $ty , $style ){
 
 		$rslt = "";
-
+		$pipe = false;
+		$pipewidth = 3;
 		//$fonteffect = 'font-weight="bold"';
-		$fonteffect =' fill="'.$style[0].'"';
+		$fill = 'fill="'.$style[0].'" ';
+		$fonteffect ='';
 		array_shift($style);
 		foreach($style as $param){
 			switch ($param)
 			{
 				case 'bold':
 					$fonteffect .=' font-weight="bold"';
+					$pipewidth = 3;
 					break;
 
 				case 'underline':
 					$fonteffect .=' text-decoration="underline"';
+					break;
+
+				case 'pipe':
+					$pipe = true;
+					//$fonteffect ='stroke="white" '.$fonteffect;
 					break;
 
 				default:
@@ -282,7 +293,12 @@ EOD;
 					break;
 			}
 		}
-		$rslt .='<text x="'.$tx.'" y="'.$ty.'"'.$fonteffect.'>'.$text.'</text>';
+
+		if($pipe){
+			
+			$rslt .='<text x="'.$tx.'" y="'.$ty.'" stroke-width="'.$pipewidth.'" stroke="white" stroke-linecap="round" '.$fonteffect.'>'.$text.'</text>';
+		}
+		$rslt .='<text x="'.$tx.'" y="'.$ty.'" stroke-width="2" '.$fill.$fonteffect.'>'.$text.'</text>';
 
 			
 		return $rslt;

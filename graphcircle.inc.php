@@ -1,6 +1,6 @@
 <?php
 
-// $Id: graphcircle.inc.php,v 0.09 2023/11/03
+// $Id: graphcircle.inc.php,v 0.10 2023/11/04
 
 function plugin_graphcircle_convert()
 {
@@ -22,8 +22,8 @@ function plugin_graphcircle_draw($argg, $lib)
 	$titlestyle=array(0 => 'black'); // タイトル用のスタイル指定データ
 
 	// グラフ座標軸関連	
-	$cx= ($cw+$offx)/2;
-	$cy= ($ch+$offy)/2;
+	$cx= $offx+$cw/2;
+	$cy= $offy+$ch/2;
 
 	$r = ($cw>$ch)? $ch/2.5 : $cw/2.5;
 
@@ -41,6 +41,9 @@ function plugin_graphcircle_draw($argg, $lib)
 	// 引数処理
 	foreach( $argg as $key => $arg){
 		////////tomoseDBG("arg[".$key."][".$arg."]");
+		// 明示的なコメント除外。これがないとコメントに"="をかけないので。 
+		if( mb_substr($arg,0,2)=="//") continue;
+		if( mb_substr($arg,0,1)=="#") continue;
 
 		if(strpos($arg,'=')){
 			$argss= $lib->trimexplode('=',$arg);
@@ -120,7 +123,9 @@ function plugin_graphcircle_draw($argg, $lib)
 			}
 		}else{
 			// 入力行に = がないケース。
-			// pukiwiki表/cvsを想定して、データとみなす。
+			// 先頭にカンマがある場合、pukiwiki表/cvsによるデータとみなす。
+			if( mb_substr($arg,0,1)!=",") continue;
+
 			// この場合、最初の有効要素をキーとみなす。
 			$datas=$lib->trimexplode(',',$arg);
 			// 最初の1つ目は必ず捨てる。
@@ -135,8 +140,8 @@ function plugin_graphcircle_draw($argg, $lib)
 	if(count($data)<=0) return "#graphcircle: No Data";
 
 	// グラフ座標 再計算
-	$cx= ($cw+$offx)/2;
-	$cy= ($ch+$offy)/2;
+	$cx= $offx+$cw/2;
+	$cy= $offy+$ch/2;
 
 	$r = ($cw>$ch)? $ch/2.5 : $cw/2.5;
 

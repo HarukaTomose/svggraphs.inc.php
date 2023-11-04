@@ -1,5 +1,5 @@
 <?php
-// $Id: graphline.inc.php,v 0.09 2023/11/3 Haruka Tomose
+// $Id: graphline.inc.php,v 0.10 2023/11/4 Haruka Tomose
 
 function plugin_graphline_convert()
 {
@@ -13,8 +13,9 @@ function plugin_graphline_draw($argg, $lib)
 
 	// 描画領域 初期値。
 	$cw=200;	$ch=50;		// キャンバスサイズデフォルト
-	$offx = 20;	$offy =10;	// キャンバス上のグラフ開始座標。
-
+	$offx = 20;	$offy =10;	// キャンバス上のグラフ開始オフセット。
+	$offxe = 10;	$offye =15;	// キャンバス上のグラフ終了オフセット
+	$xtxtoff = 20;	$ytxtoff = 15;
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
@@ -46,6 +47,9 @@ function plugin_graphline_draw($argg, $lib)
 	// 引数処理
 	foreach( $argg as $key => $arg){
 		////tomoseDBG("arg[".$key."][".$arg."]");
+		// 明示的なコメント除外。これがないとコメントに"="をかけないので。 
+		if( mb_substr($arg,0,2)=="//") continue;
+		if( mb_substr($arg,0,1)=="#") continue;
 
 		if(strpos($arg,'=')){
 			$argss= $lib->trimexplode('=',$arg);
@@ -59,10 +63,15 @@ function plugin_graphline_draw($argg, $lib)
 					$ch = is_numeric($argss[1])? $argss[1]: $ch;
 					break;
 				case 'offx': //オフセット位置指定
-					$offx = is_numeric($argss[1])? $argss[1]: $offx;
+					// offx=startx[,endx]。
+					$tmp=$lib->trimexplode(',',($argss[1]).",,");
+					$offx = is_numeric($tmp[0])? $tmp[0]: $offx;
+					$offxe = is_numeric($tmp[1])? $tmp[1]: $offxe;
 					break;
 				case 'offy': //オフセット位置指定
-					$offy = is_numeric($argss[1])? $argss[1]: $offy;
+					$tmp=$lib->trimexplode(',',($argss[1]).",,");
+					$offy = is_numeric($tmp[0])? $tmp[0]: $offy;
+					$offye = is_numeric($tmp[1])? $tmp[1]: $offye;
 					break;
 
 				case 'minx': //グラフｘ軸最小値
@@ -169,7 +178,9 @@ function plugin_graphline_draw($argg, $lib)
 			}
 		}else{
 			// 入力行に = がないケース。
-			// pukiwiki表/cvsを想定して、データとみなす。
+			// 先頭にカンマがある場合、pukiwiki表/cvsによるデータとみなす。
+			if( mb_substr($arg,0,1)!=",") continue;
+
 			// この場合、最初の有効要素をキーとみなす。
 			$datas=$lib->trimexplode(',',$arg);
 			// カンマ区切りなのでデータ構造は次の通り
@@ -218,7 +229,9 @@ function plugin_graphline_draw($argg, $lib)
 	if($dcount<3) return "#graphline: to few item in one-line.";
 
 	// キャンバスサイズを基準に、グラフ領域を決める
-	$eow = $cw-10;	$eoh = $ch-15;
+	// 描画領域の終端
+	$eow = $cw-$offxe;	$eoh = $ch-	$offye;
+	//実際の描画領域幅
 	$clipx = $eow-$offx; $clipy=$eoh - $offy;
 
 	$html = '';
@@ -228,6 +241,7 @@ $html =<<<EOD
 
 <svg xmlns="http://www.w3.org/2000/svg" width="$cw" height="$ch" viewBox="0 0 $cw $ch">
 
+// メイン軸線
 <line x1="$offx" y1="$offy" x2="$offx" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:1" />
 <line x1="$offx" y1="$eoh" x2="$eow" y2="$eoh" style="stroke:rgb(0,0,0);stroke-width:1" />
 <clipPath id="cliparea"><rect x="$offx" y="$offy" width="$clipx" height="$clipy" />
@@ -253,13 +267,13 @@ EOD;
 	}
 
 	foreach($sclisty as $value){
-		$ypos = intval($ch-15-(($value)*($ch-15-$offy)/($maxy-$miny)));
+		$ypos = intval($ch-$offye-(($value)*($ch-$offye-$offy)/($maxy-$miny)));
 
 $html .=<<<EOD
 <line x1="$offx" y1="$ypos" x2="$eow" y2="$ypos" stroke-dasharray="10,10" style="stroke:gray;stroke-width:1" />
 
 EOD;
-$html .='<text x="0" y="'.$ypos.'" fill="black">'.($value+$miny).'</text>';
+$html .='<text x="'.($offx-$xtxtoff).'" y="'.$ypos.'" fill="black">'.($value+$miny).'</text>';
 
 	}
 	// x軸めもり
@@ -281,14 +295,14 @@ $html .='<text x="0" y="'.$ypos.'" fill="black">'.($value+$miny).'</text>';
 
 	
 	foreach($sclistx as $value){
-		$xpos = intval($offx+(($value-$minx)*($cw-10-$offx)/($maxx-$minx)));
+		$xpos = intval($offx+(($value-$minx)*($cw-$offxe-$offx)/($maxx-$minx)));
 
 $html .=<<<EOD
 
 <line x1="$xpos" y1="$offy" x2="$xpos" y2="$eoh" stroke-dasharray="10,10" style="stroke:gray;stroke-width:1" />
 
 EOD;
-$html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
+$html .='<text x="'.$xpos.'" y="'.($ch-$offye+$ytxtoff).'" fill="black">'.($value).'</text>';
 
 	}
 
@@ -375,7 +389,7 @@ EOD;
 		$html .='<polyline points="';
 
 		foreach( $line as $key => $value){
-			$xpos = $offx+(($xtable[$key]-$minx)*($cw-10-$offx)/($maxx-$minx));
+			$xpos = $offx+(($xtable[$key]-$minx)*($cw-$offxe-$offx)/($maxx-$minx));
 
 			//tomoseDBG("item:".$key.", pos(".$xpos.",".$value.")");
 			// まずデータ確認。数値でない可能性もあるため。
@@ -389,8 +403,8 @@ EOD;
 			// yの値域は、最小 $miny,最大$maxy。これをコンバートしないとならない。
 			// 倍率変換がこんな感じ。($ch-10-$offy)/($maxy-$miny)
 
-			$ypos = intval($ch-15-(($value-$miny)*($ch-15-$offy)/($maxy-$miny)));
-			$xpos = intval($offx+(($xtable[$key]-$minx)*($cw-10-$offx)/($maxx-$minx)));
+			$ypos = intval($ch-$offye-(($value-$miny)*($ch-$offye-$offy)/($maxy-$miny)));
+			$xpos = intval($offx+(($xtable[$key]-$minx)*($cw-$offxe-$offx)/($maxx-$minx)));
 			$html .=<<<EOD
 $xpos,$ypos 
 EOD;

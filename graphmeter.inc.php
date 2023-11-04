@@ -3,7 +3,7 @@
 // graphmeter.inc.php
 // svggraphシリーズ：横バーグラフ的なメーター表示プラグイン。
 //
-// ver0.06 2023/10/29 H.Tomose
+// ver0.10 2023/11/4 H.Tomose
 
 function plugin_graphmeter_convert()
 {
@@ -34,6 +34,10 @@ function plugin_graphmeter_draw($argg, $lib)
 
 	// 引数処理
 	foreach( $argg as $key => $arg){
+		// 明示的なコメント除外。これがないとコメントに"="をかけないので。 
+		if( mb_substr($arg,0,2)=="//") continue;
+		if( mb_substr($arg,0,1)=="#") continue;
+
 		if(strpos($arg,'=')){
 			$argss= $lib->trimexplode('=',$arg);
 			//$argss = array_map('trim', $argss); 

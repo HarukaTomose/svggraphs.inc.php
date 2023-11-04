@@ -1,5 +1,5 @@
 <?php
-// $Id: graphhistgram.inc.php,v 0.01 2017/03/14 Haruka Tomose
+// $Id: graphhistgram.inc.php,v 0.10 2023/11/4 Haruka Tomose
 
 function plugin_graphhistgram_convert()
 {
@@ -15,10 +15,12 @@ function plugin_graphhistgram_draw($argg, $lib)
 	$cw=200;	$ch=50;		// キャンバスサイズデフォルト
 	$offx = 20;	$offy =10;	// キャンバス上のグラフ開始座標。
 	$offex =2;
+	$offxe = 10;	$offye =15;	// キャンバス上のグラフ終了オフセット
 	
 	//グラフタイトル
 	$gtitle = "";	// タイトル文字列
 	$tx = round($cw/3); $ty=20;	//タイトル座標デフォルト
+	$titlestyle=array(0 => 'black'); // タイトル用のスタイル指定データ
 
 	// グラフ座標軸関連
 	$miny=0;	$maxy=0;	// y軸の値域
@@ -44,6 +46,9 @@ function plugin_graphhistgram_draw($argg, $lib)
 	// 引数処理
 	foreach( $argg as $key => $arg){
 		//////tomoseDBG("arg[".$key."][".$arg."]");
+		// 明示的なコメント除外。これがないとコメントに"="をかけないので。 
+		if( mb_substr($arg,0,2)=="//") continue;
+		if( mb_substr($arg,0,1)=="#") continue;
 
 		if(strpos($arg,'=')){
 			$argss= $lib->trimexplode('=',$arg);
@@ -57,10 +62,15 @@ function plugin_graphhistgram_draw($argg, $lib)
 					$ch = is_numeric($argss[1])? $argss[1]: $ch;
 					break;
 				case 'offx': //オフセット位置指定
-					$offx = is_numeric($argss[1])? $argss[1]: $offx;
+					// offx=startx[,endx]。
+					$tmp=$lib->trimexplode(',',($argss[1]).",,");
+					$offx = is_numeric($tmp[0])? $tmp[0]: $offx;
+					$offxe = is_numeric($tmp[1])? $tmp[1]: $offxe;
 					break;
 				case 'offy': //オフセット位置指定
-					$offy = is_numeric($argss[1])? $argss[1]: $offy;
+					$tmp=$lib->trimexplode(',',($argss[1]).",,");
+					$offy = is_numeric($tmp[0])? $tmp[0]: $offy;
+					$offye = is_numeric($tmp[1])? $tmp[1]: $offye;
 					break;
 
 				case 'minx': //グラフｘ軸最小値
@@ -92,6 +102,9 @@ function plugin_graphhistgram_draw($argg, $lib)
 					break;
 				case 'title':
 					$gtitle=htmlsc($argss[1]);
+					break;
+				case 'titlestyle':
+					$titlestyle= $lib->trimexplode(',',$argss[1]);
 					break;
 
 				case 'legendx': //タイトル座標ｘ
@@ -144,6 +157,9 @@ function plugin_graphhistgram_draw($argg, $lib)
 			}
 		}else{
 			// 入力行に = がないケース。
+			// 先頭にカンマがある場合、pukiwiki表/cvsによるデータとみなす。
+			if( mb_substr($arg,0,1)!=",") continue;
+
 			// pukiwiki表/cvsを想定して、データとみなす。
 			// この場合、最初の有効要素をキーとみなす。
 			$datas=$lib->trimexplode(',',$arg);
@@ -217,7 +233,7 @@ function plugin_graphhistgram_draw($argg, $lib)
 	if($dcount<3) return "#graphline: to few item in one-line.";
 
 	// キャンバスサイズを基準に、グラフ領域を決める
-	$eow = $cw-10;	$eoh = $ch-15;
+	$eow = $cw-$offxe;	$eoh = $ch-	$offye;
 	$clipx = $eow-$offx; $clipy=$eoh - $offy;
 
 	$html = '';
@@ -252,7 +268,7 @@ EOD;
 	}
 
 	foreach($sclisty as $value){
-		$ypos = intval($ch-15-(($value)*($ch-15-$offy)/($maxy-$miny)));
+		$ypos = intval($ch-$offye-(($value)*($ch-$offye-$offy)/($maxy-$miny)));
 
 $html .=<<<EOD
 <line x1="$offx" y1="$ypos" x2="$eow" y2="$ypos" stroke-dasharray="10,10" style="stroke:gray;stroke-width:1" />
@@ -278,7 +294,7 @@ $html .='<text x="0" y="'.$ypos.'" fill="black">'.($value+$miny).'</text>';
 	}
 
 	foreach($sclistx as $value){
-		$xpos = intval($offx+(($value-$minx)*($cw-10-$offx)/($maxx-$minx)));
+		$xpos = intval($offx+(($value-$minx)*($cw-$offxe-$offx)/($maxx-$minx)));
 /*
 $html .=<<<EOD
 
@@ -286,13 +302,13 @@ $html .=<<<EOD
 EOD;
 */
 
-$html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
+$html .='<text x="'.($xpos-8).'" y="'.$ch.'" fill="black">'.($value).'</text>';
 
 	}
 
 
 	if(! $gtitle==""){
-		$html .='<text x="'.$tx.'" y="'.$ty.'" fill="black">'.$gtitle.'</text>';
+		$html .= $lib->CreateTitle( $gtitle, $tx, $ty , $titlestyle );
 	}	
 
 //<clipPath id="cliparea">
@@ -301,7 +317,7 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 
 
 	$precol =0;
-	$dw = intval(($cw-$offx)/($dcount-1));
+	$dw = intval(($cw-$offx-$offxe)/($dcount-1));
 
 	// 各データごとの幅線表示
 	foreach( $dtable as $k =>$line){
@@ -323,11 +339,11 @@ $html .='<text x="'.$xpos.'" y="'.$ch.'" fill="black">'.($value).'</text>';
 			// yの値域は、最小 $miny,最大$maxy。これをコンバートしないとならない。
 			// 倍率変換がこんな感じ。($ch-10-$offy)/($maxy-$miny)
 
-			$ypos = intval($ch-15-(($value-$miny)*($ch-15-$offy)/($maxy-$miny)));
-			$xpos = intval($offx+(($xtable[$key]-$minx)*($cw-10-$offx)/($maxx-$minx)));
+			$ypos = intval($ch-$offye-(($value-$miny)*($ch-$offye-$offy)/($maxy-$miny)));
+			$xpos = intval($offx+(($xtable[$key]-$minx)*($cw-$offxe-$offx)/($maxx-$minx)));
 			$ccolor= (!$color[$k]=="")? $color[$k]:$lib->getnextcolor($precol);
 			$precol=$ccolor;
-			$yzero = $ch-$ypos-15;
+			$yzero = $ch-$ypos-$offye; 
 			$html .=<<<EOD
 <rect x="$xwork" y="$ypos" width="$dw" height="$yzero" style="fill:lightgrey; stroke-width:1;stroke:black" />
 EOD;
