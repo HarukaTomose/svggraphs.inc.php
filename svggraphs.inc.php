@@ -224,7 +224,7 @@ class Plugin_svggraphs_lib
 
 	// 凡例作成メソッド。
 	// 凡例は複数のグラフで使うので、ライブラリに入れる。
-	function CreateLegend( $data, $color, $x, $y ){
+	function CreateLegend( $data, $color, $x, $y ,$style){
 		$rslt = "";
 
 		$legendw=0;
@@ -247,7 +247,8 @@ EOD;
 	
 			$ccolor= (!$color[$key]=="")? $color[$key]:$this->getnextcolor($precol);
 			$precol=$ccolor;
-			$rslt .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
+//			$rslt .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" marker-mid="url(#m_'.$key.')" />';
+			$rslt .='<polyline points="10,'.$tmp.' 20,'.$tmp.' 30,'.$tmp.'" stroke="'.$ccolor.'" stroke-width="1" '.$style[htmlsc($key)].' />';
 			$rslt .='<text x="40" y="'.($tmp+2).'" fill="black">'.htmlsc($key).'</text>'."\n";
 			$tmp+=12;
 

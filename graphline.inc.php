@@ -445,6 +445,8 @@ EOD;
 		if($mwork!=""){
 			$lstyle .= ' marker-mid="url(#'.$mwork.')"';
 		}
+		$linestyle[htmlsc($k)] = $lstyle;
+
 
 $html .='" clip-path="url(#cliparea)" style="fill:none;stroke:'.$ccolor.';stroke-width:'.$swidth.'" '.$lstyle.'/>';
 $html .="\n";
@@ -453,7 +455,7 @@ $html .="\n";
 
 	//ËŞÎã¡£
 	if(!$legend==""){
-		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy );
+		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy ,$linestyle);
 	
 	}	
 

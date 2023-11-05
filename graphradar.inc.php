@@ -352,12 +352,15 @@ $html .= <<<EOD
 $mwork2
 </marker>
 EOD;
-			$lstyle .= ' marker-mid="url(#'.$mwork.')" marker-start="url(#'.$mwork.')"';
+			$lstyle .= ' marker-mid="url(#'.$mwork.')"';
+			$lstyle2 = ' marker-start="url(#'.$mwork.')"';
+			$linestyle[htmlsc($lname)] = $lstyle;
+
 
 		}
 
 
-$html .='<polygon points="'.$stroke.'" stroke="'.$lcolor.'" fill="'.$fcolor.'" fill-opacity="'.$fopa.'" '.$lstyle.' />';
+$html .='<polygon points="'.$stroke.'" stroke="'.$lcolor.'" fill="'.$fcolor.'" fill-opacity="'.$fopa.'" '.$lstyle.$lstyle2.' />';
 
 
 	}
@@ -371,7 +374,7 @@ $html .='<polygon points="'.$stroke.'" stroke="'.$lcolor.'" fill="'.$fcolor.'" f
 	//-----------------
 	//ËÞÎã¡£
 	if($legend!=""){
-		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy );
+		$html .=$lib->CreateLegend( $data, $color, $legendx, $legendy ,$linestyle);
 	}	
 
 
